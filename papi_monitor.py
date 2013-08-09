@@ -48,7 +48,7 @@ class PapiMonitor():
                 screen_high, screen_width = screen.getmaxyx()#获取屏幕显示尺寸
                 instance_list = self.get_monitor_info()
                 self.INSTANCENUM = len(instance_list)
-                value_long = self.get_max_value_long(instance_list, self.KEYS, self.VALUES, value_long)
+                value_long = self.get_max_value_long(instance_list, value_long)
                 one_instance_rows = int(math.ceil(sum(value_long[0:len(self.KEYS)]) / float(screen_width)))
 
                 screen.addstr(row_index, 1, time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time())))
@@ -104,12 +104,12 @@ class PapiMonitor():
         screen.addstr(row_index + 2 * one_instance_rows - 1, sum(value_long[0:len(self.KEYS)]) - screen_width * (one_instance_rows - 1), "|")
         screen.addstr(row_index + 3 * one_instance_rows - 1, sum(value_long[0:len(self.KEYS)]) - screen_width * (one_instance_rows - 1), "+")
 
-    def get_max_value_long(self, instance_list, keys, values, value_long):
+    def get_max_value_long(self, instance_list, value_long):
         for instance in instance_list:
             index = 0
-            while index < len(keys):
-                if len(str(instance[values[index]])) > value_long[index]:
-                    value_long[index] = len(str(instance[values[index]])) + 2
+            while index < len(self.KEYS):
+                if len(str(instance[self.VALUES[index]])) > value_long[index]:
+                    value_long[index] = len(str(instance[self.VALUES[index]])) + 2
                 index += 1
         return value_long
 
@@ -120,7 +120,6 @@ class PapiMonitor():
 
     def get_monitor_info(self):
         url = "http://192.168.194.129:8087/?action=desc_instance_used&begin=%s&end=%s&sort=%s" % (START, END+1, SORT)
-#        url = "http://10.168.0.105:8087/?action=desc_instance_used&begin=%s&end=%s&sort=%s" % (START, END, SORT)
         papi = urllib2.urlopen(url, timeout=10).read()
         instance_list = json.loads(papi)
         return instance_list
@@ -160,6 +159,5 @@ if __name__ == '__main__':
         curses.endwin()
     except Exception, e:
         print e
-
 
 
