@@ -59,8 +59,7 @@ class PapiMonitor():
                     time.sleep(1)
                     continue
 
-                self.refresh_init_info(value_long, screen_width, one_instance_rows)
-                row_index += 3 * one_instance_rows
+                row_index = self.refresh_init_info(value_long, screen_width, one_instance_rows)
                 self.SHOWNUM = (screen_high - 4 * one_instance_rows - 2) / one_instance_rows
                 if self.SHOWNUM < 0:
                     self.SHOWNUM = 0
@@ -92,6 +91,8 @@ class PapiMonitor():
             integer, remainder = divmod(sum(value_long[0:index]), screen_width)
             screen.addstr(row_index + integer, remainder, "+" + '-' * value_long[index])
         screen.addstr(row_index + 1 * one_instance_rows - 1, sum(value_long[0:len(self.KEYS)]) - screen_width * (one_instance_rows - 1), "+")
+        row_index += 3 * one_instance_rows
+        return row_index
 
     def refresh_init_info(self, value_long, screen_width, one_instance_rows):
         row_index = 2
