@@ -37,6 +37,7 @@ class PapiMonitor():
 
     def url_report(self, screen):
         keys = ["实例id", "ip", "已建数据库", "实际建数据库", "数据库资源数误差", "磁盘大小", "磁盘使用量", "磁盘数用率"]
+        values = ["id", "ip", "quota_db_num", "actually_use_db", "db_differ_num", "capacity_total", "capacity_used", "ratio_used"]
         value_len = []
         for key in keys:
             value_len.append(int(round(len(key) * 0.8)))
