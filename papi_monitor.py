@@ -30,79 +30,108 @@ SORT = int(sys.argv[3])
 
 class PapiMonitor():
     TOP = 0
-    NUM = 0
+    SHOWNUM = 0
     UP = -1
     DOWN = 1
-    REQUESTLONG = 0
+    INSTANCENUM = 0
+    KEYS = ["实例id", "ip", "已建数据库", "实际建数据库", "数据库资源数误差", "磁盘大小", "磁盘使用量", "磁盘数用率"]
+    VALUES = ["id", "ip", "quota_db_num", "actually_use_db", "db_differ_num", "capacity_total", "capacity_used", "ratio_used"]
 
-    def url_report(self, screen):
-        keys = ["实例id", "ip", "已建数据库", "实际建数据库", "数据库资源数误差", "磁盘大小", "磁盘使用量", "磁盘数用率"]
-        value_len = []
-        for key in keys:
-            value_len.append(int(round(len(key) * 0.8)))
+    def run_monitor(self, screen):
+        value_long = []
+        value_long = self.get_every_key_long(value_long)
+
         while True:
-            screen.clear()
-            url = "http://192.168.194.129:8087/?action=desc_instance_used&begin=%s&end=%s&sort=%s" % (START, END+1, SORT)
-            papi = urllib2.urlopen(url, timeout=10).read()
-            papi = json.loads(papi)
-            keys = [" 实例id ", " ip ", " 已建数据库 ", " 实际建数据库 ", " 数据库资源数误差 ", " 磁盘大小 ", " 磁盘使用量 ", " 磁盘数用率 "]
-            values = ["id", "ip", "quota_db_num", "actually_use_db", "db_differ_num", "capacity_total", "capacity_used", "ratio_used"]
-            page_len, line_len = screen.getmaxyx()#获取屏幕显示尺寸
-            line = 1
-            self.REQUESTLONG = len(papi)
-            for instance in papi:
-                index = 0
-                while index < len(keys):
-                    if len(str(instance[values[index]])) > value_len[index]:
-                        value_len[index] = len(str(instance[values[index]])) + 2
-                    index += 1
-            multiple = int(math.ceil(sum(value_len[0:len(keys)]) / float(line_len)))
-            screen.addstr(line, 1, time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time())))
-            line += 1
-            if line + 4 * multiple > page_len:
-                screen.addstr(1, 1, "哥， 窗口也太小了吧...")
+            try:
+                screen.clear()
+                row_index = 1
+                screen_high, screen_width = screen.getmaxyx()#获取屏幕显示尺寸
+                instance_list = self.get_monitor_info()
+                self.INSTANCENUM = len(instance_list)
+                value_long = self.get_max_value_long(instance_list, self.KEYS, self.VALUES, value_long)
+                one_instance_rows = int(math.ceil(sum(value_long[0:len(self.KEYS)]) / float(screen_width)))
+
+                screen.addstr(row_index, 1, time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time())))
+                row_index += 1
+                if row_index + 4 * one_instance_rows > screen_high:
+                    screen.addstr(1, 1, "哥， 窗口也太小了吧...")
+                    screen.refresh()
+                    time.sleep(1)
+                    continue
+
+                self.refresh_init_info(value_long, screen_width, one_instance_rows)
+                row_index += 3 * one_instance_rows
+                self.SHOWNUM = (screen_high - 4 * one_instance_rows - 2) / one_instance_rows
+                if self.SHOWNUM < 0:
+                    self.SHOWNUM = 0
+                screen.addstr(1, 25, "SHOWNUM:" + str(self.SHOWNUM) + " INSTANCENUM:" + str(self.INSTANCENUM) + " TOP:" + str(self.TOP))
+
+                row_index = self.refresh_instance_info(instance_list, value_long, screen_width, row_index, one_instance_rows)
+
+                self.refresh_end_info(value_long, screen_width, row_index, one_instance_rows)
                 screen.refresh()
                 time.sleep(1)
-                continue
-            for index, item in enumerate(keys):
-                integer, remainder = divmod(sum(value_len[0:index]), line_len)
-                screen.addstr(line + integer, remainder, "+" + '-' * value_len[index])
-                screen.addstr(line + 1 * multiple + integer, remainder, "|" + item)
-                screen.addstr(line + 2 * multiple + integer, remainder, "+" + '-' * value_len[index])
-            screen.addstr(line + 1 * multiple - 1, sum(value_len[0:len(keys)]) - line_len * (multiple - 1), "+")
-            screen.addstr(line + 2 * multiple - 1, sum(value_len[0:len(keys)]) - line_len * (multiple - 1), "|")
-            screen.addstr(line + 3 * multiple - 1, sum(value_len[0:len(keys)]) - line_len * (multiple - 1), "+")
+            except Exception, e:
+                screen.addstr(0, 0, str(e))
+                screen.refresh()
+                time.sleep(1)
 
-            line += 3 * multiple
+    def refresh_instance_info(self, instance_list, value_long, screen_width, row_index, one_instance_rows):
+        for instance in instance_list[self.TOP:self.SHOWNUM + self.TOP]:
+            index = 0
+            while index < len(self.KEYS):
+                integer, remainder = divmod(sum(value_long[0:index]), screen_width)
+                screen.addstr(row_index + integer, remainder, "|" + str(instance[self.VALUES[index]]))
+                index += 1
+            screen.addstr(row_index + 1 * one_instance_rows - 1, sum(value_long[0:len(self.KEYS)]) - screen_width * (one_instance_rows - 1), "|")
+            row_index += 1 * one_instance_rows
+        return row_index
 
-            self.NUM = (page_len - 4 * multiple - 2) / multiple
-            if self.NUM < 0:
-                self.NUM = 0
-            screen.addstr(1, 25, "NUM:" + str(self.NUM) + " REQUESTLONG:" + str(self.REQUESTLONG) + " TOP:" + str(self.TOP))
-#            end = self.NUM + self.TOP
-            for instance in papi[self.TOP:self.NUM + self.TOP]:
-                index = 0
-                while index < len(keys):
-                    integer, remainder = divmod(sum(value_len[0:index]), line_len)
-                    screen.addstr(line + integer, remainder, "|" + str(instance[values[index]]))
-                    index += 1
-                screen.addstr(line + 1 * multiple - 1, sum(value_len[0:len(keys)]) - line_len * (multiple - 1), "|")
-                line += 1 * multiple
+    def refresh_end_info(self, value_long, screen_width, row_index, one_instance_rows):
+        for index, item in enumerate(self.KEYS):
+            integer, remainder = divmod(sum(value_long[0:index]), screen_width)
+            screen.addstr(row_index + integer, remainder, "+" + '-' * value_long[index])
+        screen.addstr(row_index + 1 * one_instance_rows - 1, sum(value_long[0:len(self.KEYS)]) - screen_width * (one_instance_rows - 1), "+")
 
-            for index, item in enumerate(keys):
-                integer, remainder = divmod(sum(value_len[0:index]), line_len)
-                screen.addstr(line + integer, remainder, "+" + '-' * value_len[index])
-            screen.addstr(line + 1 * multiple - 1, sum(value_len[0:len(keys)]) - line_len * (multiple - 1), "+")
-            screen.refresh()
-            time.sleep(1)
+    def refresh_init_info(self, value_long, screen_width, one_instance_rows):
+        row_index = 2
+        for index, item in enumerate(self.KEYS):
+            integer, remainder = divmod(sum(value_long[0:index]), screen_width)
+            screen.addstr(row_index + integer, remainder, "+" + '-' * value_long[index])
+            screen.addstr(row_index + 1 * one_instance_rows + integer, remainder, "|" + item)
+            screen.addstr(row_index + 2 * one_instance_rows + integer, remainder, "+" + '-' * value_long[index])
+        screen.addstr(row_index + 1 * one_instance_rows - 1, sum(value_long[0:len(self.KEYS)]) - screen_width * (one_instance_rows - 1), "+")
+        screen.addstr(row_index + 2 * one_instance_rows - 1, sum(value_long[0:len(self.KEYS)]) - screen_width * (one_instance_rows - 1), "|")
+        screen.addstr(row_index + 3 * one_instance_rows - 1, sum(value_long[0:len(self.KEYS)]) - screen_width * (one_instance_rows - 1), "+")
+
+    def get_max_value_long(self, instance_list, keys, values, value_long):
+        for instance in instance_list:
+            index = 0
+            while index < len(keys):
+                if len(str(instance[values[index]])) > value_long[index]:
+                    value_long[index] = len(str(instance[values[index]])) + 2
+                index += 1
+        return value_long
+
+    def get_every_key_long(self, value_long):
+        for key in self.KEYS:
+            value_long.append(int(round(len(key) * 0.8)))
+        return value_long
+
+    def get_monitor_info(self):
+        url = "http://192.168.194.129:8087/?action=desc_instance_used&begin=%s&end=%s&sort=%s" % (START, END+1, SORT)
+#        url = "http://10.168.0.105:8087/?action=desc_instance_used&begin=%s&end=%s&sort=%s" % (START, END, SORT)
+        papi = urllib2.urlopen(url, timeout=10).read()
+        instance_list = json.loads(papi)
+        return instance_list
 
     def updown(self, increment):
 
         # paging
-        if increment == self.UP and self.TOP > 0 and self.REQUESTLONG > self.NUM and self.NUM > 0:
+        if increment == self.UP and self.TOP > 0 and self.INSTANCENUM > self.SHOWNUM and self.SHOWNUM > 0:
             self.TOP += self.UP
             return
-        elif increment == self.DOWN and self.REQUESTLONG > self.TOP + self.NUM and self.NUM > 0:
+        elif increment == self.DOWN and self.INSTANCENUM > self.TOP + self.SHOWNUM and self.SHOWNUM > 0:
             self.TOP += self.DOWN
             return
 
@@ -121,7 +150,7 @@ if __name__ == '__main__':
     try:
         screen = curses.initscr()
         monitor = PapiMonitor()
-        thread.start_new_thread(monitor.url_report, (screen,))
+        thread.start_new_thread(monitor.run_monitor, (screen,))
         x = 0
         while x != ord('q'):
             x = screen.getch()
@@ -132,5 +161,6 @@ if __name__ == '__main__':
         curses.endwin()
     except Exception, e:
         print e
+
 
 
