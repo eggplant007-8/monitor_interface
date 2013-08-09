@@ -126,7 +126,6 @@ class PapiMonitor():
         return instance_list
 
     def updown(self, increment):
-
         # paging
         if increment == self.UP and self.TOP > 0 and self.INSTANCENUM > self.SHOWNUM and self.SHOWNUM > 0:
             self.TOP += self.UP
