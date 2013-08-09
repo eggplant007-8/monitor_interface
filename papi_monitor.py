@@ -45,8 +45,6 @@ class PapiMonitor():
             url = "http://192.168.194.129:8087/?action=desc_instance_used&begin=%s&end=%s&sort=%s" % (START, END+1, SORT)
             papi = urllib2.urlopen(url, timeout=10).read()
             papi = json.loads(papi)
-            keys = [" 实例id ", " ip ", " 已建数据库 ", " 实际建数据库 ", " 数据库资源数误差 ", " 磁盘大小 ", " 磁盘使用量 ", " 磁盘数用率 "]
-            values = ["id", "ip", "quota_db_num", "actually_use_db", "db_differ_num", "capacity_total", "capacity_used", "ratio_used"]
             page_len, line_len = screen.getmaxyx()#获取屏幕显示尺寸
             line = 1
             self.REQUESTLONG = len(papi)
